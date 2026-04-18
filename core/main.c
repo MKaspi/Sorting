@@ -64,7 +64,11 @@ int main(int argc, char **argv) {
         .print_steps = cfg.print_steps
     };
 
-    printf("%ld\n",ctx.n);
+    for(int i=0; i< ctx.n; i++){
+        printf("%d ",((int*)ctx.data)[i]);
+    }
+    printf("\n");
+
     sort(&ctx);
 
     free(ctx.swap_buf);

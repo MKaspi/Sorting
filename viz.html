@@ -35,13 +35,10 @@ let ctx = document.getElementById("canvas").getContext("2d");
 const dropZone = document.getElementById("dropZone");
 const fileInput = document.getElementById("fileInput");
 
-// kliknutí otevře file dialog
 dropZone.onclick = () => fileInput.click();
 
-// výběr souboru
 fileInput.onchange = e => loadFile(e.target.files[0]);
 
-// drag & drop
 dropZone.ondragover = e => {
     e.preventDefault();
     dropZone.style.borderColor = "lime";
@@ -68,10 +65,9 @@ function loadFile(file) {
 
 function parseInput(text) {
     let lines = text.trim().split("\n");
-    let n = parseInt(lines[0]);
 
-    arr = [];
-    for (let i = 0; i < n; i++) arr.push(i);
+    // 🟢 první řádek = pole
+    arr = lines[0].trim().split(" ").map(Number);
 
     swaps = [];
 
@@ -107,9 +103,10 @@ async function start() {
 }
 
 function sleep(ms) {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise(r => setTimeout(r, ms));
 }
 </script>
 
 </body>
 </html>
+
