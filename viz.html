@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<title>Sort vizualizace</title>
+<style>
+    body { font-family: sans-serif; background: #111; color: #eee; text-align: center; }
+    #dropZone {
+        border: 2px dashed #666;
+        padding: 20px;
+        margin: 20px;
+        cursor: pointer;
+    }
+    canvas { background: #000; display: block; margin: auto; }
+    button { margin: 10px; padding: 8px 16px; }
+</style>
+</head>
+<body>
+
+<h2>Vizualizace swapů</h2>
+
+<div id="dropZone">📂 Přetáhni soubor sem nebo klikni</div>
+<input type="file" id="fileInput" style="display:none">
+
+<br>
+<button onclick="start()">Spustit</button>
+
+<canvas id="canvas" width="1000" height="400"></canvas>
+
+<script>
+let arr = [];
+let swaps = [];
+let ctx = document.getElementById("canvas").getContext("2d");
+
+const dropZone = document.getElementById("dropZone");
+const fileInput = document.getElementById("fileInput");
+
+// kliknutí otevře file dialog
+dropZone.onclick = () => fileInput.click();
+
+// výběr souboru
+fileInput.onchange = e => loadFile(e.target.files[0]);
+
+// drag & drop
+dropZone.ondragover = e => {
+    e.preventDefault();
+    dropZone.style.borderColor = "lime";
+};
+
+dropZone.ondragleave = () => {
+    dropZone.style.borderColor = "#666";
+};
+
+dropZone.ondrop = e => {
+    e.preventDefault();
+    dropZone.style.borderColor = "#666";
+    loadFile(e.dataTransfer.files[0]);
+};
+
+function loadFile(file) {
+    const reader = new FileReader();
+    reader.onload = e => {
+        parseInput(e.target.result);
+        draw();
+    };
+    reader.readAsText(file);
+}
+
+function parseInput(text) {
+    let lines = text.trim().split("\n");
+    let n = parseInt(lines[0]);
+
+    arr = [];
+    for (let i = 0; i < n; i++) arr.push(i);
+
+    swaps = [];
+
+    for (let i = 1; i < lines.length; i++) {
+        let line = lines[i].trim();
+        if (line.startsWith("swap")) {
+            let parts = line.split(" ");
+            swaps.push([parseInt(parts[1]), parseInt(parts[2])]);
+        }
+    }
+}
+
+function draw(highlight = []) {
+    ctx.clearRect(0, 0, 1000, 400);
+
+    let w = 1000 / arr.length;
+    let max = Math.max(...arr);
+
+    for (let i = 0; i < arr.length; i++) {
+        let h = (arr[i] / max) * 380;
+
+        ctx.fillStyle = highlight.includes(i) ? "red" : "lime";
+        ctx.fillRect(i * w, 400 - h, w - 1, h);
+    }
+}
+
+async function start() {
+    for (let [i, j] of swaps) {
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+        draw([i, j]);
+        await sleep(10);
+    }
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+</script>
+
+</body>
+</html>

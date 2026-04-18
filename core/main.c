@@ -60,10 +60,11 @@ int main(int argc, char **argv) {
         .n = ds.n,
         .elem_size = ds.elem_size,
         .cmp = cmp_int,
-        .swap_buf = malloc(ds.elem_size)
-//        .print_steps = cfg.print_steps
+        .swap_buf = malloc(ds.elem_size),
+        .print_steps = cfg.print_steps
     };
 
+    printf("%ld\n",ctx.n);
     sort(&ctx);
 
     free(ctx.swap_buf);

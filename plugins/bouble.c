@@ -1,6 +1,7 @@
 #include "sort.h"
 #include "abi.h"
 #include <string.h>
+#include <stdio.h>
 
 plugin_info_t plugin_info = {
     .name = "bubble",
@@ -11,6 +12,9 @@ plugin_info_t plugin_info = {
 
 void sort(sort_ctx *ctx) {
     for (size_t i = 0; i < ctx->n; i++) {
+        if (ctx->print_steps) {
+            printf("iterace %zu\n", i);
+        }
         for (size_t j = 0; j + 1 < ctx->n - i; j++) {
             void *a = ELEM(ctx, j);
             void *b = ELEM(ctx, j+1);
