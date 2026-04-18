@@ -30,13 +30,13 @@ $(PLUGIN_DIR)/%.so: plugins/%.c
 
 $(BIN): $(CORE_SRC)
 	mkdir -p $(@D)
-	$(CC) $(CFLAGS) $(CORE_SRC) -o $@ $(LDFLAGS)
+	$(CC) $(CFLAGS) $(CORE_SRC) -o $@ $(LDFLAGS) -rdynamic
 
 # --- TEST (example orchestration) ---
 
 test: build
 	@echo "Running example test (quick sort, 2048 elements)..."
-	./$(BIN) $(PLUGIN_DIR)/quick.so \
+	./$(BIN) $(PLUGIN_DIR)/bouble.so \
 	  --input generator \
 	  --elem-count 2048 \
 	  --elem-size 4
