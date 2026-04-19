@@ -54,11 +54,12 @@ int main(int argc, char **argv) {
 
     dataset_t ds;
 
-    if (cfg.input_mode == INPUT_GENERATOR) {
+/*    if (cfg.input_mode == INPUT_GENERATOR) {
         ds = dataset_generate(cfg.elem_count, cfg.elem_size);
     } else {
         ds = dataset_mmap(cfg.input_path, cfg.elem_size);
-    }
+    } */
+    return 3;
 
     sort_ctx ctx = {
         .data = ds.data,

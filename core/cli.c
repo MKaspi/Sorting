@@ -15,7 +15,7 @@ config_t parse_cli(int argc, char **argv) {
         else if (strcmp(argv[i], "--version") == 0) {
             cfg.show_help = 1;
         }
-        else if (strcmp(argv[i], "--plugin_detail") == 0) {
+        else if (strcmp(argv[i], "--plugin-detail") == 0) {
             cfg.show_plugin_detail = 1;
         }
         else if (strcmp(argv[i], "--elem-size") == 0) {
@@ -27,12 +27,16 @@ config_t parse_cli(int argc, char **argv) {
         else if (strcmp(argv[i], "--print-steps") == 0) {
             cfg.print_steps = 1;
         }
-        else if (strcmp(argv[i], "--input") == 0) {
+        else if (strcmp(argv[i], "--dataset-create") == 0) {
+            cfg.dataset_create = 1;
+        }
+        else if (strcmp(argv[i], "--dataset") == 0) {
             char *mode = argv[++i];
-            if (strcmp(mode, "generator") == 0) {
-                cfg.input_mode = INPUT_GENERATOR;
+            if (strcmp(mode, "internal") == 0) {
+                cfg.dataset = DATASET_INTERNAL;
+                cfg.dataset_create = 1; // pokud je internal tak ho i naplnim
             } else {
-                cfg.input_mode = INPUT_FILE;
+                cfg.dataset = DATASET_FILE;
                 cfg.input_path = mode;
             }
         }

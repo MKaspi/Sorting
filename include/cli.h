@@ -1,12 +1,12 @@
 #ifndef CLI_H
 #define CLI_H
 
-#include "dataset.h"
+#include "dataset_enum.h"
 
 typedef struct {
     char *plugin_path;
 
-    input_mode_t input_mode;
+    dataset_type_t dataset;
     char *input_path;
 
     size_t elem_size;
@@ -16,6 +16,7 @@ typedef struct {
     int show_version;
     int show_plugin_detail;
     int print_steps;
+    int dataset_create;
 
 } config_t;
 
