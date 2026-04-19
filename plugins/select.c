@@ -4,19 +4,22 @@
 #include <stdio.h>
 
 plugin_info_t plugin_info = {
-    .name = "bubble",
-    .description = "bubble sort",
+    .name = "select",
+    .description = "select sort",
     .version = "1.0",
     .abi_version = FRAMEWORK_ABI_VERSION
 };
 
 void sort(sort_ctx *ctx) {
     for (size_t i = 0; i < ctx->n; i++) {
-        for (size_t j = 0; j + 1 < ctx->n - i; j++) {
-            if (ctx->cmp(ctx, j, j+1) > 0) {
-                swap(ctx, j, j+1);
+        size_t min = i;
+        for (size_t j = i + 1; j < ctx->n; j++) {
+            if (ctx->cmp(ctx, j, min) < 0) {
+                min = j;
             }
+        }
+        if (min != i) {
+            swap(ctx, i, min);
         }
     }
 }
-

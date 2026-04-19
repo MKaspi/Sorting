@@ -13,17 +13,22 @@
     }
     canvas { background: #000; display: block; margin: auto; }
     button { margin: 10px; padding: 8px 16px; }
+    #status { margin-top: 10px; font-family: monospace; }
 </style>
 </head>
 <body>
 
 <h2>Vizualizace swapů a porovnání</h2>
 
-<div id="dropZone">📂 Přetáhni soubor sem nebo klikni</div>
+<div id="dropZone">Přetáhni soubor sem nebo klikni</div>
 <input type="file" id="fileInput" style="display:none">
 
 <br>
-<button onclick="start()">Spustit</button>
+<button onclick="play()">Play</button>
+<button onclick="pause()">Pause</button>
+<button onclick="nextStep()">Step</button>
+
+<div id="status">Připraveno...</div>
 
 <canvas id="canvas" width="1000" height="400"></canvas>
 
@@ -31,6 +36,11 @@
 let arr = [];
 let ops = [];
 let ctx = document.getElementById("canvas").getContext("2d");
+
+let currentStep = 0;
+let isPlaying = false;
+
+const statusEl = document.getElementById("status");
 
 const dropZone = document.getElementById("dropZone");
 const fileInput = document.getElementById("fileInput");
@@ -58,7 +68,9 @@ function loadFile(file) {
     const reader = new FileReader();
     reader.onload = e => {
         parseInput(e.target.result);
+        currentStep = 0;
         draw();
+        statusEl.textContent = "Načteno. Připraveno ke spuštění.";
     };
     reader.readAsText(file);
 }
@@ -66,7 +78,6 @@ function loadFile(file) {
 function parseInput(text) {
     let lines = text.trim().split("\n");
 
-    // první řádek = pole
     arr = lines[0].trim().split(/\s+/).map(Number);
     ops = [];
 
@@ -106,19 +117,46 @@ function draw(highlight = [], mode = null) {
     }
 }
 
-async function start() {
-    for (let op of ops) {
-        if (op.type === "swap") {
-            [arr[op.i], arr[op.j]] = [arr[op.j], arr[op.i]];
-            draw([op.i, op.j], "swap");
-            await sleep(10);
-        }
-
-        if (op.type === "compare") {
-            draw([op.i, op.j], "compare");
-            await sleep(5);
-        }
+function step() {
+    if (currentStep >= ops.length) {
+        statusEl.textContent = "Hotovo";
+        isPlaying = false;
+        return;
     }
+
+    let op = ops[currentStep];
+
+    if (op.type === "swap") {
+        [arr[op.i], arr[op.j]] = [arr[op.j], arr[op.i]];
+        draw([op.i, op.j], "swap");
+        statusEl.textContent = "swap " + op.i + " " + op.j;
+    }
+
+    if (op.type === "compare") {
+        draw([op.i, op.j], "compare");
+        statusEl.textContent = "compare " + op.i + " " + op.j;
+    }
+
+    currentStep++;
+}
+
+async function play() {
+    if (isPlaying) return;
+    isPlaying = true;
+
+    while (isPlaying && currentStep < ops.length) {
+        step();
+        await sleep(20);
+    }
+}
+
+function pause() {
+    isPlaying = false;
+}
+
+function nextStep() {
+    pause();
+    step();
 }
 
 function sleep(ms) {
