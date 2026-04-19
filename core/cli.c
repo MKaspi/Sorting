@@ -49,7 +49,7 @@ void print_help(void) {
     printf("Version: 2.0.0\n");
     printf("Usage:\n");
     printf("bench <plugin> --input generator --elem-count N [--elem-size S]\n");
-    printf("bench <plugin> --input <file> [--elem-size S]\n");
+    printf("bench <plugin> --input <file> [--elem-size S] [--print-steps]\n");
     printf("bench <plugin> --plugin_detail\n");
     printf("bench --version\n");
     printf("bench --help\n");

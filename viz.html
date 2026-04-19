@@ -17,7 +17,7 @@
 </head>
 <body>
 
-<h2>Vizualizace swapů</h2>
+<h2>Vizualizace swapů a porovnání</h2>
 
 <div id="dropZone">📂 Přetáhni soubor sem nebo klikni</div>
 <input type="file" id="fileInput" style="display:none">
@@ -29,7 +29,7 @@
 
 <script>
 let arr = [];
-let swaps = [];
+let ops = [];
 let ctx = document.getElementById("canvas").getContext("2d");
 
 const dropZone = document.getElementById("dropZone");
@@ -66,21 +66,26 @@ function loadFile(file) {
 function parseInput(text) {
     let lines = text.trim().split("\n");
 
-    // 🟢 první řádek = pole
-    arr = lines[0].trim().split(" ").map(Number);
-
-    swaps = [];
+    // první řádek = pole
+    arr = lines[0].trim().split(/\s+/).map(Number);
+    ops = [];
 
     for (let i = 1; i < lines.length; i++) {
         let line = lines[i].trim();
+
         if (line.startsWith("swap")) {
-            let parts = line.split(" ");
-            swaps.push([parseInt(parts[1]), parseInt(parts[2])]);
+            let parts = line.split(/\s+/);
+            ops.push({ type: "swap", i: +parts[1], j: +parts[2] });
+        }
+
+        if (line.startsWith("compare")) {
+            let parts = line.split(/\s+/);
+            ops.push({ type: "compare", i: +parts[1], j: +parts[2] });
         }
     }
 }
 
-function draw(highlight = []) {
+function draw(highlight = [], mode = null) {
     ctx.clearRect(0, 0, 1000, 400);
 
     let w = 1000 / arr.length;
@@ -89,16 +94,30 @@ function draw(highlight = []) {
     for (let i = 0; i < arr.length; i++) {
         let h = (arr[i] / max) * 380;
 
-        ctx.fillStyle = highlight.includes(i) ? "red" : "lime";
+        if (highlight.includes(i)) {
+            if (mode === "swap") ctx.fillStyle = "red";
+            else if (mode === "compare") ctx.fillStyle = "cyan";
+            else ctx.fillStyle = "yellow";
+        } else {
+            ctx.fillStyle = "lime";
+        }
+
         ctx.fillRect(i * w, 400 - h, w - 1, h);
     }
 }
 
 async function start() {
-    for (let [i, j] of swaps) {
-        [arr[i], arr[j]] = [arr[j], arr[i]];
-        draw([i, j]);
-        await sleep(10);
+    for (let op of ops) {
+        if (op.type === "swap") {
+            [arr[op.i], arr[op.j]] = [arr[op.j], arr[op.i]];
+            draw([op.i, op.j], "swap");
+            await sleep(10);
+        }
+
+        if (op.type === "compare") {
+            draw([op.i, op.j], "compare");
+            await sleep(5);
+        }
     }
 }
 
@@ -109,4 +128,3 @@ function sleep(ms) {
 
 </body>
 </html>
-

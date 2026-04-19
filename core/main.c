@@ -7,10 +7,15 @@
 #include "sort.h"
 #include "abi.h"
 
-int cmp_int(const void *a, const void *b) {
-    int x = *(const int*)a;
-    int y = *(const int*)b;
-    return (x > y) - (x < y);
+int cmp_int(sort_ctx *ctx, size_t left, size_t right) {
+    if (ctx->print_steps) {
+        printf("compare %ld %ld\n",left,right);
+    }
+
+    int *a = (int *)ELEM(ctx, left);
+    int *b = (int *)ELEM(ctx, right);
+
+    return (*a > *b) - (*a < *b);
 }
 
 int main(int argc, char **argv) {

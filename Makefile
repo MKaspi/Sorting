@@ -35,11 +35,11 @@ $(BIN): $(CORE_SRC)
 # --- TEST (example orchestration) ---
 
 test: build
-	@echo "Running example test (quick sort, 2048 elements)..."
 	./$(BIN) $(PLUGIN_DIR)/bouble.so \
 	  --input generator \
-	  --elem-count 2048 \
-	  --elem-size 4
+	  --elem-count 200 \
+	  --elem-size 4 \
+	  --print-steps
 
 # --- CLEAN ---
 

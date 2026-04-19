@@ -16,10 +16,7 @@ void sort(sort_ctx *ctx) {
             printf("iterace %zu\n", i);
         }
         for (size_t j = 0; j + 1 < ctx->n - i; j++) {
-            void *a = ELEM(ctx, j);
-            void *b = ELEM(ctx, j+1);
-
-            if (ctx->cmp(a, b) > 0) {
+            if (ctx->cmp(ctx, j, j+1) > 0) {
                 swap(ctx, j, j+1);
             }
         }
