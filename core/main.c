@@ -56,6 +56,8 @@ int main(int argc, char **argv) {
 
     if(cfg.dataset_fill){
         dataset_fill(&ds);
+        dataset_free(&ds);
+        exit(0);
     }
 
     sort_ctx ctx = {
@@ -67,10 +69,12 @@ int main(int argc, char **argv) {
         .print_steps = cfg.print_steps
     };
 
-    for(int i=0; i< ctx.n; i++){
-        printf("%d ",((int*)ctx.data)[i]);
+    if (ctx.print_steps) { // vypis prvku
+        for(int i=0; i< ctx.n; i++){
+            printf("%d ",((int*)ctx.data)[i]);
+        }
+        printf("\n");
     }
-    printf("\n");
 
     sort(&ctx);
 

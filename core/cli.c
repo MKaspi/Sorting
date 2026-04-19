@@ -34,7 +34,6 @@ config_t parse_cli(int argc, char **argv) {
             char *mode = argv[++i];
             if (strcmp(mode, "internal") == 0) {
                 cfg.dataset = DATASET_INTERNAL;
-                cfg.dataset_fill = 1; // pokud je internal tak ho i naplnim
             } else {
                 cfg.dataset = DATASET_FILE;
                 cfg.input_path = mode;

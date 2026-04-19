@@ -40,13 +40,31 @@ $(BIN): $(CORE_SRC) $(HEADERS)
 
 test: $(TESTS)
 
+#$(TEST_DIR)/%.out: $(PLUGIN_DIR)/%.so $(BIN)
+#	mkdir -p $(@D)
+#	./$(BIN) $< \
+#	  --dataset internal \
+#	  --elem-count 200 \
+#	  --print-steps \
+#	  > $@
+
 $(TEST_DIR)/%.out: $(PLUGIN_DIR)/%.so $(BIN)
 	mkdir -p $(@D)
-	./$(BIN) $< \
-	  --dataset internal \
-	  --elem-count 200 \
-	  --print-steps \
-	  > $@
+	cp input/d1.int .build/tmp.int
+	/bin/time -f " \n \
+	  === Výkon programu === \n \
+	  Reálný čas (wall clock): %E \n \
+	  Uživatelský čas (CPU):   %U \n \
+	  Systémový čas:           %S \n \
+	  Využití CPU:             %P \n \
+	  Max. paměť (KB):         %M \n \
+	  Prům. paměť (KB):        %K \n \
+	  Počet I/O vstupů:        %I \n \
+	  Počet I/O výstupů:       %O \n \
+	  Počet context switchů:   %c \n \
+	  " ./$(BIN) $< \
+	      --dataset .build/tmp.int \
+	      &> $@
 
 # --- CLEAN ---
 
