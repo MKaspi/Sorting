@@ -50,7 +50,7 @@ test: $(TESTS)
 
 $(TEST_DIR)/%.out: $(PLUGIN_DIR)/%.so $(BIN)
 	mkdir -p $(@D)
-	cp input/d1.int .build/tmp.int
+	cp input/d2.int .build/$(patsubst $(TEST_DIR)/%.out,%,$@).int
 	/bin/time -f " \n \
 	  === Výkon programu === \n \
 	  Reálný čas (wall clock): %E \n \
@@ -63,7 +63,7 @@ $(TEST_DIR)/%.out: $(PLUGIN_DIR)/%.so $(BIN)
 	  Počet I/O výstupů:       %O \n \
 	  Počet context switchů:   %c \n \
 	  " ./$(BIN) $< \
-	      --dataset .build/tmp.int \
+	      --dataset .build/$(patsubst $(TEST_DIR)/%.out,%,$@).int \
 	      &> $@
 
 # --- CLEAN ---
