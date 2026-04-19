@@ -52,14 +52,11 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    dataset_t ds;
+    dataset_t ds = dataset_create(cfg);
 
-/*    if (cfg.input_mode == INPUT_GENERATOR) {
-        ds = dataset_generate(cfg.elem_count, cfg.elem_size);
-    } else {
-        ds = dataset_mmap(cfg.input_path, cfg.elem_size);
-    } */
-    return 3;
+    if(cfg.dataset_fill){
+        dataset_fill(&ds);
+    }
 
     sort_ctx ctx = {
         .data = ds.data,

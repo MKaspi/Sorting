@@ -1,0 +1,12 @@
+#ifndef DATASET_ENUM_H
+#define DATASET_ENUM_H
+
+
+typedef enum {
+    DATASET_INTERNAL,
+    DATASET_FILE
+} dataset_type_t;
+
+#endif
+
+

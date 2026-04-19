@@ -27,14 +27,14 @@ config_t parse_cli(int argc, char **argv) {
         else if (strcmp(argv[i], "--print-steps") == 0) {
             cfg.print_steps = 1;
         }
-        else if (strcmp(argv[i], "--dataset-create") == 0) {
-            cfg.dataset_create = 1;
+        else if (strcmp(argv[i], "--dataset-fill") == 0) {
+            cfg.dataset_fill = 1;
         }
         else if (strcmp(argv[i], "--dataset") == 0) {
             char *mode = argv[++i];
             if (strcmp(mode, "internal") == 0) {
                 cfg.dataset = DATASET_INTERNAL;
-                cfg.dataset_create = 1; // pokud je internal tak ho i naplnim
+                cfg.dataset_fill = 1; // pokud je internal tak ho i naplnim
             } else {
                 cfg.dataset = DATASET_FILE;
                 cfg.input_path = mode;

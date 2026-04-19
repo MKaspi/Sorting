@@ -18,7 +18,7 @@ typedef struct {
 } dataset_t;
 
 dataset_t dataset_create(config_t cfg);
-void dataset_generate(dataset_t *ds);
+void dataset_fill(dataset_t *ds);
 void dataset_free(dataset_t *ds);
 
 #endif

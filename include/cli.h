@@ -16,7 +16,7 @@ typedef struct {
     int show_version;
     int show_plugin_detail;
     int print_steps;
-    int dataset_create;
+    int dataset_fill;
 
 } config_t;
 

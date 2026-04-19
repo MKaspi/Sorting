@@ -15,6 +15,7 @@ CORE_SRC = $(wildcard core/*.c)
 BIN = bench
 
 PLUGIN_SRC = $(wildcard plugins/*.c)
+HEADERS = $(wildcard include/*.h)
 PLUGIN_SO = $(patsubst plugins/%.c,$(PLUGIN_DIR)/%.so,$(PLUGIN_SRC))
 
 TESTS = $(patsubst plugins/%.c,$(TEST_DIR)/%.out,$(PLUGIN_SRC))
@@ -25,13 +26,13 @@ build: $(PLUGIN_SO) $(BIN)
 
 # --- PLUGINS (.so) ---
 
-$(PLUGIN_DIR)/%.so: plugins/%.c
+$(PLUGIN_DIR)/%.so: plugins/%.c $(HEADERS)
 	mkdir -p $(@D)
 	$(CC) $(CFLAGS) -shared $< -o $@
 
 # --- CORE BINARY ---
 
-$(BIN): $(CORE_SRC)
+$(BIN): $(CORE_SRC) $(HEADERS)
 	mkdir -p $(@D)
 	$(CC) $(CFLAGS) $(CORE_SRC) -o $@ $(LDFLAGS) -rdynamic
 
@@ -42,9 +43,8 @@ test: $(TESTS)
 $(TEST_DIR)/%.out: $(PLUGIN_DIR)/%.so $(BIN)
 	mkdir -p $(@D)
 	./$(BIN) $< \
-	  --input generator \
+	  --dataset internal \
 	  --elem-count 200 \
-	  --elem-size 4 \
 	  --print-steps \
 	  > $@
 
