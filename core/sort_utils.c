@@ -17,3 +17,10 @@ void swap(sort_ctx *ctx, size_t left, size_t right) {
     memcpy(b, ctx->swap_buf, ctx->elem_size);
 }
 
+void copy(sort_ctx *ctx, size_t src, size_t dst, copy_direction_t dir){
+    if(dir == aux_to_main){
+        memcpy(ELEM(ctx, dst), ELEM_AUX(ctx, src), ctx->elem_size);
+    } else {
+        memcpy(ELEM_AUX(ctx, dst), ELEM(ctx, src), ctx->elem_size);
+    }
+}
