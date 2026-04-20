@@ -62,6 +62,7 @@ int main(int argc, char **argv) {
 
     sort_ctx ctx = {
         .data = ds.data,
+        .aux = ds.aux,
         .n = ds.n,
         .elem_size = ds.elem_size,
         .cmp = cmp_int,

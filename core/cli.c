@@ -30,6 +30,9 @@ config_t parse_cli(int argc, char **argv) {
         else if (strcmp(argv[i], "--dataset-fill") == 0) {
             cfg.dataset_fill = 1;
         }
+        else if (strcmp(argv[i], "--auxiliary") == 0) {
+            cfg.auxiliary = 1;
+        }
         else if (strcmp(argv[i], "--dataset") == 0) {
             char *mode = argv[++i];
             if (strcmp(mode, "internal") == 0) {

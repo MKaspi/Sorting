@@ -10,6 +10,7 @@ typedef int (*cmp_fn)(sort_ctx *ctx, size_t left, size_t right);
 
 struct sort_ctx {
     void *data;
+    void *aux;  // pomocne pole
     size_t n;
     size_t elem_size;
     cmp_fn cmp;

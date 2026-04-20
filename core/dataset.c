@@ -13,6 +13,14 @@ void dataset_fill(dataset_t *ds) {
     }
 }
 
+size_t dataset_size(config_t cfg){
+    return cfg.elem_size * cfg.elem_count * (1 + cfg.auxiliary * 1);
+}
+
+size_t elems_count(dataset_t *ds, config_t cfg){
+    return ds->size / ds->elem_size / (1 + cfg.auxiliary * 1);
+}
+
 int prepare_file(dataset_t *ds, config_t cfg) {
     int fd = open(cfg.input_path, O_RDWR | O_CREAT, 0644);
     if (fd < 0) {
@@ -20,7 +28,7 @@ int prepare_file(dataset_t *ds, config_t cfg) {
         return -1;
     }
 
-    size_t desired_size = cfg.elem_size * cfg.elem_count;
+    size_t desired_size = dataset_size(cfg);
 
     struct stat st;
     if (fstat(fd, &st) == -1) {
@@ -59,10 +67,9 @@ void dataset_mmap(dataset_t *ds, config_t cfg) {
     close(fd);
 
     ds->data = data;
-    ds->mapping = data;
 }
 void dataset_malloc(dataset_t *ds, config_t cfg) {
-    ds->size = ds->elem_size * cfg.elem_count;
+    ds->size = dataset_size(cfg);
 
     void *data = malloc(ds->size);
     if(data == NULL){printf("fuckoff, malloc fail\n");exit(4);}
@@ -88,7 +95,11 @@ dataset_t dataset_create(config_t cfg){
         printf("fuck off, unknown dataset mode\n");
     }
 
-    ds.n = ds.size / ds.elem_size;
+    ds.n = elems_count(&ds, cfg);
+
+    if(cfg.auxiliary){
+    ds.aux = ds.data + ds.elem_size * ds.n;
+}
 
     return ds;
 }
@@ -98,7 +109,7 @@ void dataset_free(dataset_t *ds) {
     if (ds->mode == DATASET_INTERNAL) {
         free(ds->data);
     } else if(ds->mode == DATASET_FILE) {
-        munmap(ds->mapping, ds->size);
+        munmap(ds->data, ds->size);
     } else {
         printf("fuck it, uvolni OS\n");
     }
