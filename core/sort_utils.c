@@ -19,8 +19,10 @@ void swap(sort_ctx *ctx, size_t left, size_t right) {
 
 void copy(sort_ctx *ctx, size_t src, size_t dst, copy_direction_t dir){
     if(dir == aux_to_main){
+        printf("copy aux_to_main %ld %ld\n", src, dst);
         memcpy(ELEM(ctx, dst), ELEM_AUX(ctx, src), ctx->elem_size);
     } else {
+        printf("copy main_to_aux %ld %ld\n", src, dst);
         memcpy(ELEM_AUX(ctx, dst), ELEM(ctx, src), ctx->elem_size);
     }
 }

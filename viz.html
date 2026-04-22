@@ -18,7 +18,7 @@
 </head>
 <body>
 
-<h2>Vizualizace swapů a porovnání</h2>
+<h2>Vizualizace swapů, porovnání a copy</h2>
 
 <div id="dropZone">Přetáhni soubor sem nebo klikni</div>
 <input type="file" id="fileInput" style="display:none">
@@ -34,6 +34,7 @@
 
 <script>
 let arr = [];
+let aux = [];
 let ops = [];
 let ctx = document.getElementById("canvas").getContext("2d");
 
@@ -79,6 +80,7 @@ function parseInput(text) {
     let lines = text.trim().split("\n");
 
     arr = lines[0].trim().split(/\s+/).map(Number);
+    aux = new Array(arr.length).fill(0);
     ops = [];
 
     for (let i = 1; i < lines.length; i++) {
@@ -93,28 +95,49 @@ function parseInput(text) {
             let parts = line.split(/\s+/);
             ops.push({ type: "compare", i: +parts[1], j: +parts[2] });
         }
+
+        if (line.startsWith("copy")) {
+            let parts = line.split(/\s+/);
+            ops.push({
+                type: "copy",
+                from: parts[1],
+                i: +parts[2],
+                j: +parts[3]
+            });
+        }
     }
 }
 
-function draw(highlight = [], mode = null) {
+function draw(highlight = { main: [], aux: [] }, mode = null) {
     ctx.clearRect(0, 0, 1000, 400);
 
-    let w = 1000 / arr.length;
-    let max = Math.max(...arr);
+    let half = 200;
 
-    for (let i = 0; i < arr.length; i++) {
-        let h = (arr[i] / max) * 380;
+    drawArray(arr, 0, half, highlight.main, mode, "main");
+    drawArray(aux, half, half, highlight.aux, mode, "aux");
+}
+
+function drawArray(array, offsetY, height, highlight, mode, label) {
+    let w = 1000 / array.length;
+    let max = Math.max(...arr, ...aux, 1);
+
+    for (let i = 0; i < array.length; i++) {
+        let h = (array[i] / max) * (height - 20);
 
         if (highlight.includes(i)) {
             if (mode === "swap") ctx.fillStyle = "red";
             else if (mode === "compare") ctx.fillStyle = "cyan";
+            else if (mode === "copy") ctx.fillStyle = "orange";
             else ctx.fillStyle = "yellow";
         } else {
-            ctx.fillStyle = "lime";
+            ctx.fillStyle = (label === "main") ? "lime" : "magenta";
         }
 
-        ctx.fillRect(i * w, 400 - h, w - 1, h);
+        ctx.fillRect(i * w, offsetY + height - h, w - 1, h);
     }
+
+    ctx.fillStyle = "white";
+    ctx.fillText(label, 10, offsetY + 12);
 }
 
 function step() {
@@ -128,13 +151,47 @@ function step() {
 
     if (op.type === "swap") {
         [arr[op.i], arr[op.j]] = [arr[op.j], arr[op.i]];
-        draw([op.i, op.j], "swap");
+
+        draw({
+            main: [op.i, op.j],
+            aux: []
+        }, "swap");
+
         statusEl.textContent = "swap " + op.i + " " + op.j;
     }
 
     if (op.type === "compare") {
-        draw([op.i, op.j], "compare");
+        draw({
+            main: [op.i, op.j],
+            aux: []
+        }, "compare");
+
         statusEl.textContent = "compare " + op.i + " " + op.j;
+    }
+
+    if (op.type === "copy") {
+
+        if (op.from === "main_to_aux") {
+            aux[op.j] = arr[op.i];
+
+            draw({
+                main: [op.i],
+                aux: [op.j]
+            }, "copy");
+
+            statusEl.textContent = `copy main[${op.i}] -> aux[${op.j}]`;
+        }
+
+        if (op.from === "aux_to_main") {
+            arr[op.j] = aux[op.i];
+
+            draw({
+                main: [op.j],
+                aux: [op.i]
+            }, "copy");
+
+            statusEl.textContent = `copy aux[${op.i}] -> main[${op.j}]`;
+        }
     }
 
     currentStep++;
@@ -146,7 +203,7 @@ async function play() {
 
     while (isPlaying && currentStep < ops.length) {
         step();
-        await sleep(20);
+        await sleep(80);
     }
 }
 
