@@ -52,11 +52,9 @@ static size_t dataset_prepare_file(int fd, size_t required_size, int enlarge) {
             perror("ftruncate");
             exit(1);
         }
-
-        return required_size;
     }
 
-    return (size_t)st.st_size;
+    return required_size;
 }
 
 static void *dataset_mmap(char *path, size_t required_size, int enlarge, size_t *mapped_size) {
@@ -131,8 +129,6 @@ dataset_t *dataset_create(config_t *cfg) {
 
     ds->n = cfg->elem_count;
     ds->elem_size = cfg->elem_size;
-    ds->size = required_size;
-
     ds->data_mode = cfg->dataset;
     ds->aux_mode = cfg->aux_dataset;
 
@@ -140,7 +136,9 @@ dataset_t *dataset_create(config_t *cfg) {
 
     ds->size = main_size;
 
-    ds->aux = dataset_alloc(cfg->aux_dataset, cfg->aux_input_path, required_size, cfg->enlarge_dataset, &aux_size);
+    if (cfg->aux_dataset != DATASET_NONE) {
+        ds->aux = dataset_alloc(cfg->aux_dataset, cfg->aux_input_path, ds->size, cfg->enlarge_dataset, &aux_size);
+    }
 
     return ds;
 }
