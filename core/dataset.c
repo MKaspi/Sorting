@@ -1,117 +1,181 @@
 #include "dataset.h"
-#include <stdlib.h>
+
 #include <fcntl.h>
-#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <stdio.h>
+#include <unistd.h>
 
-void dataset_fill(dataset_t *ds) {
-    // jen int generator
-    for (size_t i = 0; i < ds->n; i++) {
-        ((int*)ds->data)[i] = rand();
+static size_t dataset_size(config_t *cfg)
+{
+    return cfg->elem_size * cfg->elem_count;
+}
+
+static void *dataset_malloc(size_t size)
+{
+    void *data = malloc(size);
+
+    if (data == NULL) {
+        perror("malloc");
+        exit(1);
     }
+
+    return data;
 }
 
-size_t dataset_size(config_t cfg){
-    return cfg.elem_size * cfg.elem_count * (1 + cfg.auxiliary * 1);
-}
+static int dataset_open_file(char *path)
+{
+    int fd = open(path, O_RDWR | O_CREAT, 0644);
 
-size_t elems_count(dataset_t *ds, config_t cfg){
-    return ds->size / ds->elem_size / (1 + cfg.auxiliary * 1);
-}
-
-int prepare_file(dataset_t *ds, config_t cfg) {
-    int fd = open(cfg.input_path, O_RDWR | O_CREAT, 0644);
     if (fd < 0) {
         perror("open");
-        return -1;
-    }
-
-    size_t desired_size = dataset_size(cfg);
-
-    struct stat st;
-    if (fstat(fd, &st) == -1) {
-        perror("fstat");
-        close(fd);
-        return -1;
-    }
-
-    if ((size_t)st.st_size < desired_size) {
-        if (ftruncate(fd, desired_size) == -1) {
-            perror("ftruncate");
-            close(fd);
-            return -1;
-        }
-        ds->size = desired_size; // meni se velikost, takze pozadovana
-    } else {
-        ds->size = st.st_size; // velikost datasetu urcuje existujici soubor
+        exit(1);
     }
 
     return fd;
 }
 
-void dataset_mmap(dataset_t *ds, config_t cfg) {
-    int fd = prepare_file(ds, cfg);
-    if (fd < 0) {
+static size_t dataset_prepare_file(int fd, size_t required_size, int enlarge)
+{
+    struct stat st;
+
+    if (fstat(fd, &st) == -1) {
+        perror("fstat");
         exit(1);
     }
 
-    void *data = mmap(NULL, ds->size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if ((size_t)st.st_size < required_size) {
+        if (!enlarge) {
+            fprintf(stderr, "dataset file is smaller than requested size\n");
+            exit(1);
+        }
+
+        if (ftruncate(fd, required_size) == -1) {
+            perror("ftruncate");
+            exit(1);
+        }
+
+        return required_size;
+    }
+
+    return (size_t)st.st_size;
+}
+
+static void *dataset_mmap(char *path, size_t required_size, int enlarge, size_t *mapped_size)
+{
+    int fd = dataset_open_file(path);
+    void *data;
+
+    *mapped_size = dataset_prepare_file(fd, required_size, enlarge);
+
+    data = mmap(NULL, *mapped_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (data == MAP_FAILED) {
         perror("mmap");
-        close(fd);
         exit(1);
     }
 
     close(fd);
 
-    ds->data = data;
-}
-void dataset_malloc(dataset_t *ds, config_t cfg) {
-    ds->size = dataset_size(cfg);
-
-    void *data = malloc(ds->size);
-    if(data == NULL){printf("fuckoff, malloc fail\n");exit(4);}
-
-    ds->data = data;
-    dataset_fill(ds); // pokud je internal, rovnou i plnim
+    return data;
 }
 
-
-dataset_t dataset_create(config_t cfg){
-    dataset_t ds = {0};
-
-    ds.elem_size = cfg.elem_size;
-    ds.mode = cfg.dataset;
-    // velikost alokovanyho prostoru si nastavim pro kazdej zvlast
-    // pocet prvku si nastavim potom, protoze se nacte z velikosti souboru
-
-    if (ds.mode == DATASET_INTERNAL) {
-        dataset_malloc(&ds,cfg);
-    } else if(ds.mode == DATASET_FILE) {
-        dataset_mmap(&ds,cfg);
-    } else {
-        printf("fuck off, unknown dataset mode\n");
+static void *dataset_alloc(dataset_type_t type,
+                           char *path,
+                           size_t required_size,
+                           int enlarge,
+                           size_t *mapped_size)
+{
+    if (type == DATASET_INTERNAL) {
+        *mapped_size = required_size;
+        return dataset_malloc(required_size);
     }
 
-    ds.n = elems_count(&ds, cfg);
+    if (type == DATASET_FILE) {
+        return dataset_mmap(path, required_size, enlarge, mapped_size);
+    }
 
-    if(cfg.auxiliary){
-    ds.aux = ds.data + ds.elem_size * ds.n;
+    return NULL;
 }
+
+static void dataset_free_memory(dataset_type_t type, void *data, size_t size)
+{
+    if (data == NULL) {
+        return;
+    }
+
+    if (type == DATASET_INTERNAL) {
+        free(data);
+        return;
+    }
+
+    if (type == DATASET_FILE) {
+        munmap(data, size);
+        return;
+    }
+}
+
+void dataset_fill(dataset_t *ds)
+{
+    size_t i;
+
+    for (i = 0; i < ds->n; i++) {
+        int value = rand();
+        void *target = (char *)ds->data + i * ds->elem_size;
+
+        if (ds->elem_size >= sizeof(int)) {
+            *(int *)target = value;
+        }
+        else {
+            memcpy(target, &value, ds->elem_size);
+        }
+    }
+}
+
+dataset_t *dataset_create(config_t *cfg)
+{
+    dataset_t *ds = dataset_malloc(sizeof(dataset_t));
+    size_t required_size = dataset_size(cfg);
+    size_t main_size = 0;
+    size_t aux_size = 0;
+
+    ds->data = NULL;
+    ds->aux = NULL;
+
+    ds->n = cfg->elem_count;
+    ds->elem_size = cfg->elem_size;
+    ds->size = required_size;
+
+    ds->data_mode = cfg->dataset;
+    ds->aux_mode = cfg->aux_dataset;
+
+    ds->data = dataset_alloc(cfg->dataset,
+                             cfg->input_path,
+                             required_size,
+                             cfg->enlarge_dataset,
+                             &main_size);
+
+    ds->size = main_size;
+
+    ds->aux = dataset_alloc(cfg->aux_dataset,
+                            cfg->aux_input_path,
+                            required_size,
+                            cfg->enlarge_dataset,
+                            &aux_size);
 
     return ds;
 }
 
-
-void dataset_free(dataset_t *ds) {
-    if (ds->mode == DATASET_INTERNAL) {
-        free(ds->data);
-    } else if(ds->mode == DATASET_FILE) {
-        munmap(ds->data, ds->size);
-    } else {
-        printf("fuck it, uvolni OS\n");
+void dataset_free(dataset_t *ds)
+{
+    if (ds == NULL) {
+        return;
     }
+
+    dataset_free_memory(ds->data_mode, ds->data, ds->size);
+    dataset_free_memory(ds->aux_mode, ds->aux, ds->size);
+
+    free(ds);
 }
 

@@ -8,18 +8,20 @@
 
 typedef struct {
     void *data;
-    void *aux;  // pomocne pole
+    void *aux;
+
     size_t n;
     size_t elem_size;
-    dataset_type_t mode;
+    size_t size;
 
-    // pro mmap
-    size_t size; // mmap potrebuje velikost jako parametr
+    dataset_type_t data_mode;
+    dataset_type_t aux_mode;
 } dataset_t;
 
-dataset_t dataset_create(config_t cfg);
+dataset_t *dataset_create(config_t *cfg);
 void dataset_fill(dataset_t *ds);
 void dataset_free(dataset_t *ds);
 
 #endif
+
 

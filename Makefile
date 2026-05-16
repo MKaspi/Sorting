@@ -14,6 +14,7 @@ TEST_DIR = $(BUILD)/tests
 CORE_SRC = $(wildcard core/*.c)
 BIN = bench
 
+TEST_ELEMS = 2000
 PLUGIN_SRC = $(wildcard plugins/*.c)
 HEADERS = $(wildcard include/*.h)
 PLUGIN_SO = $(patsubst plugins/%.c,$(PLUGIN_DIR)/%.so,$(PLUGIN_SRC))
@@ -40,14 +41,6 @@ $(BIN): $(CORE_SRC) $(HEADERS)
 
 test: $(TESTS)
 
-#$(TEST_DIR)/%.out: $(PLUGIN_DIR)/%.so $(BIN)
-#	mkdir -p $(@D)
-#	./$(BIN) $< \
-#	  --dataset internal \
-#	  --elem-count 200 \
-#	  --print-steps \
-#	  > $@
-
 $(TEST_DIR)/%.out: $(PLUGIN_DIR)/%.so $(BIN)
 	mkdir -p $(@D)
 	cp input/d2.int .build/$(patsubst $(TEST_DIR)/%.out,%,$@).int
@@ -64,6 +57,8 @@ $(TEST_DIR)/%.out: $(PLUGIN_DIR)/%.so $(BIN)
 	  Počet context switchů:   %c \n \
 	  " ./$(BIN) $< \
 	      --dataset .build/$(patsubst $(TEST_DIR)/%.out,%,$@).int \
+	      --auxiliary .build/aux.file \
+	      --elem-count $(TEST_ELEMS) \
 	      &> $@
 
 # --- CLEAN ---

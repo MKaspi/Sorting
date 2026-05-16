@@ -21,10 +21,19 @@ int cmp_int(sort_ctx *ctx, size_t left, size_t right) {
 int main(int argc, char **argv) {
     config_t cfg = parse_cli(argc, argv);
 
-    if (cfg.show_help || !cfg.plugin_path) {
+    if (cfg.show_help || (!cfg.plugin_path && !cfg.dataset_fill)) {
         print_help();
         return 0;
     }
+
+    dataset_t *ds = dataset_create(&cfg);
+
+    if(cfg.dataset_fill){
+        dataset_fill(ds);
+        dataset_free(ds);
+        exit(0);
+    }
+
 
     void *handle = dlopen(cfg.plugin_path, RTLD_LAZY);
     if (!handle) {
@@ -52,21 +61,13 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    dataset_t ds = dataset_create(cfg);
-
-    if(cfg.dataset_fill){
-        dataset_fill(&ds);
-        dataset_free(&ds);
-        exit(0);
-    }
-
     sort_ctx ctx = {
-        .data = ds.data,
-        .aux = ds.aux,
-        .n = ds.n,
-        .elem_size = ds.elem_size,
+        .data = ds->data,
+        .aux = ds->aux,
+        .n = ds->n,
+        .elem_size = ds->elem_size,
         .cmp = cmp_int,
-        .swap_buf = malloc(ds.elem_size),
+        .swap_buf = malloc(ds->elem_size),
         .print_steps = cfg.print_steps
     };
 
@@ -80,7 +81,7 @@ int main(int argc, char **argv) {
     sort(&ctx);
 
     free(ctx.swap_buf);
-    dataset_free(&ds);
+    dataset_free(ds);
 
     dlclose(handle);
     return 0;
