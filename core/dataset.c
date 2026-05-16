@@ -8,13 +8,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-static size_t dataset_size(config_t *cfg)
-{
+static size_t dataset_size(config_t *cfg) {
     return cfg->elem_size * cfg->elem_count;
 }
 
-static void *dataset_malloc(size_t size)
-{
+static void *dataset_malloc(size_t size) {
     void *data = malloc(size);
 
     if (data == NULL) {
@@ -25,8 +23,7 @@ static void *dataset_malloc(size_t size)
     return data;
 }
 
-static int dataset_open_file(char *path)
-{
+static int dataset_open_file(char *path) {
     int fd = open(path, O_RDWR | O_CREAT, 0644);
 
     if (fd < 0) {
@@ -37,8 +34,7 @@ static int dataset_open_file(char *path)
     return fd;
 }
 
-static size_t dataset_prepare_file(int fd, size_t required_size, int enlarge)
-{
+static size_t dataset_prepare_file(int fd, size_t required_size, int enlarge) {
     struct stat st;
 
     if (fstat(fd, &st) == -1) {
@@ -63,8 +59,7 @@ static size_t dataset_prepare_file(int fd, size_t required_size, int enlarge)
     return (size_t)st.st_size;
 }
 
-static void *dataset_mmap(char *path, size_t required_size, int enlarge, size_t *mapped_size)
-{
+static void *dataset_mmap(char *path, size_t required_size, int enlarge, size_t *mapped_size) {
     int fd = dataset_open_file(path);
     void *data;
 
@@ -81,12 +76,7 @@ static void *dataset_mmap(char *path, size_t required_size, int enlarge, size_t 
     return data;
 }
 
-static void *dataset_alloc(dataset_type_t type,
-                           char *path,
-                           size_t required_size,
-                           int enlarge,
-                           size_t *mapped_size)
-{
+static void *dataset_alloc(dataset_type_t type, char *path, size_t required_size, int enlarge, size_t *mapped_size) {
     if (type == DATASET_INTERNAL) {
         *mapped_size = required_size;
         return dataset_malloc(required_size);
@@ -99,8 +89,7 @@ static void *dataset_alloc(dataset_type_t type,
     return NULL;
 }
 
-static void dataset_free_memory(dataset_type_t type, void *data, size_t size)
-{
+static void dataset_free_memory(dataset_type_t type, void *data, size_t size) {
     if (data == NULL) {
         return;
     }
@@ -116,8 +105,7 @@ static void dataset_free_memory(dataset_type_t type, void *data, size_t size)
     }
 }
 
-void dataset_fill(dataset_t *ds)
-{
+void dataset_fill(dataset_t *ds) {
     size_t i;
 
     for (i = 0; i < ds->n; i++) {
@@ -126,15 +114,13 @@ void dataset_fill(dataset_t *ds)
 
         if (ds->elem_size >= sizeof(int)) {
             *(int *)target = value;
-        }
-        else {
+        } else {
             memcpy(target, &value, ds->elem_size);
         }
     }
 }
 
-dataset_t *dataset_create(config_t *cfg)
-{
+dataset_t *dataset_create(config_t *cfg) {
     dataset_t *ds = dataset_malloc(sizeof(dataset_t));
     size_t required_size = dataset_size(cfg);
     size_t main_size = 0;
@@ -150,25 +136,16 @@ dataset_t *dataset_create(config_t *cfg)
     ds->data_mode = cfg->dataset;
     ds->aux_mode = cfg->aux_dataset;
 
-    ds->data = dataset_alloc(cfg->dataset,
-                             cfg->input_path,
-                             required_size,
-                             cfg->enlarge_dataset,
-                             &main_size);
+    ds->data = dataset_alloc(cfg->dataset, cfg->input_path, required_size, cfg->enlarge_dataset, &main_size);
 
     ds->size = main_size;
 
-    ds->aux = dataset_alloc(cfg->aux_dataset,
-                            cfg->aux_input_path,
-                            required_size,
-                            cfg->enlarge_dataset,
-                            &aux_size);
+    ds->aux = dataset_alloc(cfg->aux_dataset, cfg->aux_input_path, required_size, cfg->enlarge_dataset, &aux_size);
 
     return ds;
 }
 
-void dataset_free(dataset_t *ds)
-{
+void dataset_free(dataset_t *ds) {
     if (ds == NULL) {
         return;
     }

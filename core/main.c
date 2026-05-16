@@ -34,7 +34,6 @@ int main(int argc, char **argv) {
         exit(0);
     }
 
-
     void *handle = dlopen(cfg.plugin_path, RTLD_LAZY);
     if (!handle) {
         fprintf(stderr, "dlopen failed\n");

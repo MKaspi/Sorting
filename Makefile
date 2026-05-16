@@ -14,7 +14,7 @@ TEST_DIR = $(BUILD)/tests
 CORE_SRC = $(wildcard core/*.c)
 BIN = bench
 
-TEST_ELEMS = 2000
+TEST_ELEMS = 200
 PLUGIN_SRC = $(wildcard plugins/*.c)
 HEADERS = $(wildcard include/*.h)
 PLUGIN_SO = $(patsubst plugins/%.c,$(PLUGIN_DIR)/%.so,$(PLUGIN_SRC))
@@ -57,8 +57,9 @@ $(TEST_DIR)/%.out: $(PLUGIN_DIR)/%.so $(BIN)
 	  Počet context switchů:   %c \n \
 	  " ./$(BIN) $< \
 	      --dataset .build/$(patsubst $(TEST_DIR)/%.out,%,$@).int \
-	      --auxiliary .build/aux.file \
+	      --aux-dataset .build/aux.file \
 	      --elem-count $(TEST_ELEMS) \
+	      --enlarge-dataset \
 	      &> $@
 
 # --- CLEAN ---
