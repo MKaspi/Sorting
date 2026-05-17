@@ -204,7 +204,8 @@ class BucketView:
     def __init__(self, n: int, pixel_width: int, vmin: int, vmax: int):
         self.n = n
         self.pixel_width = max(1, pixel_width)
-        self.bucket_count = self.pixel_width
+        self.column_width = 5
+        self.bucket_count = max(1, (self.pixel_width + self.column_width - 1) // self.column_width)
         self.vmin = vmin
         self.vmax = vmax if vmax != vmin else vmin + 1
         self.value_sum = [0.0] * self.bucket_count
@@ -252,20 +253,40 @@ class BucketView:
 
     def draw_values(self, draw, box, label, font) -> None:
         x0, y0, x1, y1 = box
-        draw.rectangle(box, fill=(18, 18, 18))
+        draw.rectangle(box, fill=(14, 16, 14))
         draw.text((x0 + 8, y0 + 6), label, fill=(230, 230, 230), font=font)
+
         inner_top = y0 + 28
-        w = x1 - x0
-        for px in range(w):
-            b = min(self.bucket_count - 1, (px * self.bucket_count) // max(1, w))
+        inner_bottom = y1 - 6
+        usable_h = max(1, inner_bottom - inner_top)
+        local_hot = max(max(self.hot_count), 1.0)
+
+        for b in range(self.bucket_count):
+            left = x0 + b * self.column_width
+            right = min(x1 - 1, left + self.column_width - 1)
+            if left >= x1:
+                break
+
             if self.value_count[b] <= 0:
-                color = (35, 35, 35)
-            else:
-                avg = self.value_sum[b] / max(1, self.value_count[b])
-                t = max(0.0, min(1.0, (avg - self.vmin) / (self.vmax - self.vmin)))
-                v = int(35 + 210 * t)
-                color = (v, v, v)
-            draw.line((x0 + px, inner_top, x0 + px, y1 - 4), fill=color)
+                draw.rectangle((left, inner_top, right, inner_bottom), fill=(28, 32, 28))
+                continue
+
+            avg = self.value_sum[b] / self.value_count[b]
+            t = max(0.0, min(1.0, (avg - self.vmin) / (self.vmax - self.vmin)))
+            bar_h = max(2, int(t * usable_h))
+
+            hot = max(0.0, min(1.0, self.hot_count[b] / local_hot))
+            green = int(80 + 150 * t)
+            red = int(20 + 80 * hot)
+            blue = int(35 + 35 * hot)
+            color = (red, green, blue)
+
+            draw.rectangle((left, inner_top, right, inner_bottom), fill=(20, 24, 20))
+            draw.rectangle((left, inner_bottom - bar_h, right, inner_bottom), fill=color)
+
+            if hot > 0.0:
+                marker_h = max(2, int(8 * hot))
+                draw.rectangle((left, inner_top, right, inner_top + marker_h), fill=(180, 220, 80))
 
     def draw_activity(self, draw, box, label, font) -> None:
         x0, y0, x1, y1 = box
@@ -475,6 +496,10 @@ class Renderer:
             os.path.join(frames_dir, "frame_%08d.png"),
             "-c:v",
             "libx264",
+            "-crf",
+            "18",
+            "-preset",
+            "slow",
             "-pix_fmt",
             "yuv420p",
             "-movflags",

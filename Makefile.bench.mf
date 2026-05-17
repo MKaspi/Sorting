@@ -7,11 +7,7 @@ BENCH_INPUT ?= input/d2.int
 BENCH_DIR ?= $(BUILD)/bench
 RENDERER ?= ./scripts/render_sort_video.py
 OPERATIONS_TO_FRAME ?= 1000
-# Individual videos are source material for the overall matrix, so keep them visually lossless by default.
-# These flags assume the renderer forwards/accepts common ffmpeg-style options. If your renderer
-# uses different option names, override BENCH_RENDER_FLAGS from the command line.
-BENCH_RENDER_FLAGS ?= --crf 0 --pix-fmt yuv444p
-BENCH_VIDEO_CHECK ?= 1
+BENCH_RENDER_FLAGS ?=
 # Overall video is used for visual comparison, so keep it visually lossless by default.
 # yuv420p merges close colors because of chroma subsampling; yuv444p avoids that.
 OVERALL_VIDEO_CODEC ?= libx264
@@ -139,13 +135,8 @@ $(BENCH_DIR)/%/output/video.mp4: $(BENCH_DIR)/%/run.done $(RENDERER)
 	  --tmp-dir "$$run_dir/aux/render-tmp" \
 	  --clean-tmp \
 	  --title "$$sort_name sort, n=$$elem_count" \
-	  $(BENCH_RENDER_FLAGS); \
-	if [ "$(BENCH_VIDEO_CHECK)" = "1" ] && command -v ffprobe >/dev/null 2>&1; then \
-	  pix_fmt=$$(ffprobe -v error -select_streams v:0 -show_entries stream=pix_fmt -of csv=p=0 "$@" 2>/dev/null || true); \
-	  if [ "$$pix_fmt" = "yuv420p" ]; then \
-	    echo "WARNING: $@ is yuv420p; close colors may merge. Try BENCH_RENDER_FLAGS='--crf 0 --pix-fmt yuv444p' or adjust $(RENDERER) to encode yuv444p/lossless." >&2; \
-	  fi; \
-	fi
+	  --progress-every-seconds 15 \
+	  $(BENCH_RENDER_FLAGS)
 
 $(BENCH_OVERALL): $(BENCH_DIR)/overall_%.mp4: $(foreach s,$(BENCH_SORTS),$(BENCH_DIR)/$(s)_%/output/video.mp4)
 	@set -eu; \
@@ -208,3 +199,12 @@ $(BENCH_SUMMARY): $(BENCH_ROWS)
 	printf 'sort,elements,wall_seconds,user_seconds,sys_seconds,max_rss_kb,operations,compare,swap,copy,log_bytes,input,log,mp4,aux\n' > $@
 	cat $^ >> $@
 
+.PHONY: sort-bench sort-bench-no-video sort-runs sort-videos sort-overall sort-summary sort-list sort-clean
+sort-bench: bench-all
+sort-bench-no-video: bench-no-video
+sort-runs: bench-runs
+sort-videos: bench-videos
+sort-overall: bench-overall
+sort-summary: bench-summary
+sort-list: bench-list
+sort-clean: bench-clean
