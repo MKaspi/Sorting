@@ -304,6 +304,8 @@ class Renderer:
             workdir = tempfile.mkdtemp(prefix="sort_video_")
 
         frames_dir = os.path.join(workdir, "frames")
+        if self.args.clean_tmp and os.path.isdir(frames_dir):
+            shutil.rmtree(frames_dir)
         os.makedirs(frames_dir, exist_ok=True)
         main_path = os.path.join(workdir, "main.i64")
         aux_path = os.path.join(workdir, "aux.i64")
@@ -436,8 +438,10 @@ class Renderer:
 
         margin = 40
         top_h = 78
-        gap = 16
-        panel_h = (self.args.height - top_h - margin - 2 * gap) // 3
+        gap = 18
+        available_h = self.args.height - top_h - margin - gap
+        main_h = int(available_h * 0.75)
+        aux_h = max(40, available_h - main_h)
         x0 = margin
         x1 = self.args.width - margin
         title = self.args.title or os.path.basename(self.args.log)
@@ -451,11 +455,9 @@ class Renderer:
         draw.text((margin, 42), stats, fill=(220, 220, 220), font=self.font)
 
         y = top_h
-        main_view.draw_values(draw, (x0, y, x1, y + panel_h), "main values", self.font)
-        y += panel_h + gap
-        aux_view.draw_values(draw, (x0, y, x1, y + panel_h), "aux values", self.font)
-        y += panel_h + gap
-        main_view.draw_activity(draw, (x0, y, x1, y + panel_h), "activity since previous frame", self.font)
+        main_view.draw_values(draw, (x0, y, x1, y + main_h), "main values", self.font)
+        y += main_h + gap
+        aux_view.draw_values(draw, (x0, y, x1, y + aux_h), "aux values", self.font)
 
         path = os.path.join(frames_dir, "frame_%08d.png" % self.frame_no)
         img.save(path)
@@ -498,8 +500,9 @@ def main() -> int:
     ap.add_argument("--frame-every-ops", type=int, default=None, help="Alias for --operations-to-frame.")
     ap.add_argument("--frames", type=int, default=0, help="Stop after this many frames. 0 means no limit.")
     ap.add_argument("--title", default="", help="Title shown in the video.")
-    ap.add_argument("--tmp-dir", default="", help="Use this directory for mmap files and PNG frames.")
+    ap.add_argument("--tmp-dir", default="", help="Working directory for mmap files and PNG frames. If set, files are kept there.")
     ap.add_argument("--keep-tmp", action="store_true", help="Keep temporary mmap files and PNG frames.")
+    ap.add_argument("--clean-tmp", action="store_true", help="Delete old frames in --tmp-dir before rendering.")
     ap.add_argument("--no-video", action="store_true", help="Only write PNG frames, do not call ffmpeg.")
     ap.add_argument("--quiet-ffmpeg", action="store_true", help="Hide ffmpeg output.")
     ap.add_argument("--progress-every-seconds", type=float, default=2.0, help="Print progress every N seconds. 0 disables periodic progress.")
