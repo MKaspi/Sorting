@@ -14,7 +14,7 @@ TEST_DIR = $(BUILD)/tests
 CORE_SRC = $(wildcard core/*.c)
 BIN = bench
 
-TEST_ELEMS = 200
+TEST_ELEMS = 2000
 PLUGIN_SRC = $(wildcard plugins/*.c)
 HEADERS = $(wildcard include/*.h)
 PLUGIN_SO = $(patsubst plugins/%.c,$(PLUGIN_DIR)/%.so,$(PLUGIN_SRC))
@@ -60,7 +60,9 @@ $(TEST_DIR)/%.out: $(PLUGIN_DIR)/%.so $(BIN)
 	      --aux-dataset .build/aux.file \
 	      --elem-count $(TEST_ELEMS) \
 	      --enlarge-dataset \
-	      &> $@
+	      --print-steps \
+	      2> $@ \
+	      > $@.log
 
 # --- CLEAN ---
 
