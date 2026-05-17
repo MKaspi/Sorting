@@ -1,0 +1,210 @@
+# Makefile.bench.mf
+# Include from the main Makefile after BUILD, BIN, PLUGIN_DIR, PLUGIN_SRC are defined.
+#
+
+BENCH_ELEMS ?= 50 200 1000
+BENCH_INPUT ?= input/d2.int
+BENCH_DIR ?= $(BUILD)/bench
+RENDERER ?= ./scripts/render_sort_video.py
+OPERATIONS_TO_FRAME ?= 1000
+# Individual videos are source material for the overall matrix, so keep them visually lossless by default.
+# These flags assume the renderer forwards/accepts common ffmpeg-style options. If your renderer
+# uses different option names, override BENCH_RENDER_FLAGS from the command line.
+BENCH_RENDER_FLAGS ?= --crf 0 --pix-fmt yuv444p
+BENCH_VIDEO_CHECK ?= 1
+# Overall video is used for visual comparison, so keep it visually lossless by default.
+# yuv420p merges close colors because of chroma subsampling; yuv444p avoids that.
+OVERALL_VIDEO_CODEC ?= libx264
+OVERALL_CRF ?= 0
+OVERALL_PRESET ?= slow
+OVERALL_PIX_FMT ?= yuv444p
+OVERALL_FFMPEG_FLAGS ?=
+
+BENCH_SORTS := $(patsubst plugins/%.c,%,$(PLUGIN_SRC))
+BENCH_RUN_IDS := $(foreach s,$(BENCH_SORTS),$(foreach n,$(BENCH_ELEMS),$(s)_$(n)))
+
+BENCH_RUN_DIRS := $(addprefix $(BENCH_DIR)/,$(BENCH_RUN_IDS))
+BENCH_RUNS := $(addsuffix /run.done,$(BENCH_RUN_DIRS))
+BENCH_MP4 := $(addsuffix /output/video.mp4,$(BENCH_RUN_DIRS))
+BENCH_ROWS := $(addsuffix /output/summary-row.csv,$(BENCH_RUN_DIRS))
+BENCH_SUMMARY := $(BENCH_DIR)/summary.csv
+BENCH_OVERALL := $(foreach n,$(BENCH_ELEMS),$(BENCH_DIR)/overall_$(n).mp4)
+
+.PHONY: bench-all bench-no-video bench-runs bench-videos bench-overall bench-summary bench-list bench-clean
+
+bench-all: bench-summary bench-overall
+
+bench-no-video: bench-summary
+
+bench-runs: $(BENCH_RUNS)
+
+bench-videos: $(BENCH_MP4)
+
+bench-overall: $(BENCH_OVERALL)
+
+bench-summary: $(BENCH_SUMMARY)
+
+bench-list:
+	@printf 'sorts: %s\n' "$(BENCH_SORTS)"
+	@printf 'elements: %s\n' "$(BENCH_ELEMS)"
+	@printf 'runs:\n'
+	@printf '  %s\n' $(BENCH_RUNS)
+	@printf 'summary rows:\n'
+	@printf '  %s\n' $(BENCH_ROWS)
+	@printf 'videos:\n'
+	@printf '  %s\n' $(BENCH_MP4)
+	@printf 'overall:\n'
+	@printf '  %s\n' $(BENCH_OVERALL)
+	@printf 'summary: %s\n' "$(BENCH_SUMMARY)"
+
+bench-clean:
+	rm -rf $(BENCH_DIR)
+
+.SECONDEXPANSION:
+$(BENCH_DIR)/%/run.done: $(BENCH_INPUT) $$(PLUGIN_SRC) | build
+	@set -eu; \
+	run_id="$*"; \
+	sort_name="$${run_id%_*}"; \
+	elem_count="$${run_id##*_}"; \
+	run_dir="$(@D)"; \
+	input_dir="$$run_dir/input"; \
+	output_dir="$$run_dir/output"; \
+	aux_dir="$$run_dir/aux"; \
+	plugin="$(PLUGIN_DIR)/$${sort_name}.so"; \
+	mkdir -p "$$input_dir" "$$output_dir" "$$aux_dir"; \
+	if [ ! -f "$$plugin" ]; then \
+	  echo "Missing plugin after build: $$plugin" >&2; \
+	  exit 2; \
+	fi; \
+	cp "$(BENCH_INPUT)" "$$input_dir/dataset.int"; \
+	echo "RUN sort=$$sort_name elements=$$elem_count workspace=$$run_dir"; \
+	/usr/bin/time \
+	  -f 'wall_seconds=%e\nuser_seconds=%U\nsys_seconds=%S\nmax_rss_kb=%M' \
+	  -o "$$output_dir/time.txt" \
+	  ./$(BIN) "$$plugin" \
+	    --dataset "$$input_dir/dataset.int" \
+	    --aux-dataset "$$aux_dir/aux.file" \
+	    --elem-count "$$elem_count" \
+	    --enlarge-dataset \
+	    --print-steps \
+	    > "$$output_dir/sort.log" \
+	    2> "$$output_dir/stderr.txt"; \
+	awk '\
+	  /^compare / { compare++ } \
+	  /^swap / { swap++ } \
+	  /^copy / { copy++ } \
+	  END { \
+	    printf "compare=%d\n", compare; \
+	    printf "swap=%d\n", swap; \
+	    printf "copy=%d\n", copy; \
+	    printf "operations=%d\n", compare + swap + copy; \
+	  }' "$$output_dir/sort.log" > "$$output_dir/ops.txt"; \
+	touch "$@"
+
+$(BENCH_DIR)/%/output/summary-row.csv: $(BENCH_DIR)/%/run.done
+	@set -eu; \
+	run_id="$*"; \
+	sort_name="$${run_id%_*}"; \
+	elem_count="$${run_id##*_}"; \
+	run_dir="$(BENCH_DIR)/$$run_id"; \
+	output_dir="$$run_dir/output"; \
+	aux_dir="$$run_dir/aux"; \
+	wall_seconds=$$(awk -F= '$$1=="wall_seconds"{print $$2}' "$$output_dir/time.txt"); \
+	user_seconds=$$(awk -F= '$$1=="user_seconds"{print $$2}' "$$output_dir/time.txt"); \
+	sys_seconds=$$(awk -F= '$$1=="sys_seconds"{print $$2}' "$$output_dir/time.txt"); \
+	max_rss_kb=$$(awk -F= '$$1=="max_rss_kb"{print $$2}' "$$output_dir/time.txt"); \
+	operations=$$(awk -F= '$$1=="operations"{print $$2}' "$$output_dir/ops.txt"); \
+	compare=$$(awk -F= '$$1=="compare"{print $$2}' "$$output_dir/ops.txt"); \
+	swap=$$(awk -F= '$$1=="swap"{print $$2}' "$$output_dir/ops.txt"); \
+	copy=$$(awk -F= '$$1=="copy"{print $$2}' "$$output_dir/ops.txt"); \
+	log_bytes=$$(wc -c < "$$output_dir/sort.log"); \
+	printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+	  "$$sort_name" "$$elem_count" \
+	  "$$wall_seconds" "$$user_seconds" "$$sys_seconds" "$$max_rss_kb" \
+	  "$$operations" "$$compare" "$$swap" "$$copy" "$$log_bytes" \
+	  "$$run_dir/input/dataset.int" "$$output_dir/sort.log" "$$output_dir/video.mp4" "$$aux_dir/aux.file" \
+	  > "$@"
+
+$(BENCH_DIR)/%/output/video.mp4: $(BENCH_DIR)/%/run.done $(RENDERER)
+	@set -eu; \
+	run_id="$*"; \
+	sort_name="$${run_id%_*}"; \
+	elem_count="$${run_id##*_}"; \
+	run_dir="$(BENCH_DIR)/$$run_id"; \
+	output_dir="$$run_dir/output"; \
+	mkdir -p "$$output_dir"; \
+	python3 "$(RENDERER)" "$$output_dir/sort.log" \
+	  -o "$@" \
+	  --operations-to-frame "$(OPERATIONS_TO_FRAME)" \
+	  --tmp-dir "$$run_dir/aux/render-tmp" \
+	  --clean-tmp \
+	  --title "$$sort_name sort, n=$$elem_count" \
+	  $(BENCH_RENDER_FLAGS); \
+	if [ "$(BENCH_VIDEO_CHECK)" = "1" ] && command -v ffprobe >/dev/null 2>&1; then \
+	  pix_fmt=$$(ffprobe -v error -select_streams v:0 -show_entries stream=pix_fmt -of csv=p=0 "$@" 2>/dev/null || true); \
+	  if [ "$$pix_fmt" = "yuv420p" ]; then \
+	    echo "WARNING: $@ is yuv420p; close colors may merge. Try BENCH_RENDER_FLAGS='--crf 0 --pix-fmt yuv444p' or adjust $(RENDERER) to encode yuv444p/lossless." >&2; \
+	  fi; \
+	fi
+
+$(BENCH_OVERALL): $(BENCH_DIR)/overall_%.mp4: $(foreach s,$(BENCH_SORTS),$(BENCH_DIR)/$(s)_%/output/video.mp4)
+	@set -eu; \
+	elem_count="$*"; \
+	out="$@"; \
+	inputs=""; \
+	count=0; \
+	for sort_name in $(BENCH_SORTS); do \
+	  video="$(BENCH_DIR)/$${sort_name}_$${elem_count}/output/video.mp4"; \
+	  if [ ! -f "$$video" ]; then \
+	    echo "Missing input video: $$video" >&2; \
+	    exit 2; \
+	  fi; \
+	  inputs="$$inputs -i '$$video'"; \
+	  count=$$((count + 1)); \
+	done; \
+	cols=$$(awk -v n="$$count" 'BEGIN { c = int(sqrt(n)); if (c*c < n) c++; print c }'); \
+	rows=$$(( (count + cols - 1) / cols )); \
+	layout=""; \
+	i=0; \
+	for sort_name in $(BENCH_SORTS); do \
+	  col=$$((i % cols)); \
+	  row=$$((i / cols)); \
+	  x="0"; \
+	  y="0"; \
+	  if [ "$$col" -gt 0 ]; then \
+	    x="w0"; \
+	    k=1; \
+	    while [ "$$k" -lt "$$col" ]; do \
+	      x="$${x}+w$$k"; \
+	      k=$$((k + 1)); \
+	    done; \
+	  fi; \
+	  if [ "$$row" -gt 0 ]; then \
+	    y="h0"; \
+	    k=1; \
+	    while [ "$$k" -lt "$$row" ]; do \
+	      y="$${y}+h$$k"; \
+	      k=$$((k + 1)); \
+	    done; \
+	  fi; \
+	  if [ "$$i" -gt 0 ]; then layout="$$layout|"; fi; \
+	  layout="$${layout}$${x}_$${y}"; \
+	  i=$$((i + 1)); \
+	done; \
+	echo "OVERALL elements=$$elem_count videos=$$count layout=$${cols}x$${rows} xstack=$$layout"; \
+	mkdir -p "$(@D)"; \
+	eval ffmpeg -y $$inputs \
+	  -filter_complex "'xstack=inputs=$$count:layout=$$layout,format=$(OVERALL_PIX_FMT)[v]'" \
+	  -map "'[v]'" \
+	  -c:v $(OVERALL_VIDEO_CODEC) \
+	  -preset $(OVERALL_PRESET) \
+	  -crf $(OVERALL_CRF) \
+	  -pix_fmt $(OVERALL_PIX_FMT) \
+	  $(OVERALL_FFMPEG_FLAGS) \
+	  "'$$out'"
+
+$(BENCH_SUMMARY): $(BENCH_ROWS)
+	mkdir -p $(@D)
+	printf 'sort,elements,wall_seconds,user_seconds,sys_seconds,max_rss_kb,operations,compare,swap,copy,log_bytes,input,log,mp4,aux\n' > $@
+	cat $^ >> $@
+
