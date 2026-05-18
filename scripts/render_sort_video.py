@@ -96,9 +96,6 @@ def write_i64(f, value: int) -> None:
 
 
 def parse_initial_line_to_files(log_file, main_path: str, aux_path: str, progress: Progress) -> Tuple[int, int, int]:
-    # Parses the first line without keeping it in RAM. The log file is left
-    # positioned right after the newline. Operation lines are then read
-    # sequentially by the main loop.
     n = 0
     vmin = None
     vmax = None
@@ -240,45 +237,52 @@ class BucketView:
             self.value_count[b] += 1
 
     def mark_compare(self, i: int, j: int) -> None:
-        self.hot_count[self.bucket_of(i)] += 1.0
-        self.hot_count[self.bucket_of(j)] += 1.0
+        return
 
     def mark_write(self, i: int) -> None:
-        self.hot_count[self.bucket_of(i)] += 3.0
+        return
 
     def clear_activity(self) -> None:
-        for i in range(self.bucket_count):
-            self.hot_count[i] = 0.0
+        return
 
     def draw_values(self, draw, box, label, font) -> None:
         x0, y0, x1, y1 = box
         draw.rectangle(box, fill=(18, 18, 18))
         draw.text((x0 + 8, y0 + 6), label, fill=(230, 230, 230), font=font)
-        inner_top = y0 + 28
-        w = x1 - x0
-        for px in range(w):
-            b = min(self.bucket_count - 1, (px * self.bucket_count) // max(1, w))
-            if self.value_count[b] <= 0:
-                color = (35, 35, 35)
-            else:
-                avg = self.value_sum[b] / max(1, self.value_count[b])
-                t = max(0.0, min(1.0, (avg - self.vmin) / (self.vmax - self.vmin)))
-                v = int(35 + 210 * t)
-                color = (v, v, v)
-            draw.line((x0 + px, inner_top, x0 + px, y1 - 4), fill=color)
 
-    def draw_activity(self, draw, box, label, font) -> None:
-        x0, y0, x1, y1 = box
-        draw.rectangle(box, fill=(12, 12, 12))
-        draw.text((x0 + 8, y0 + 6), label, fill=(230, 230, 230), font=font)
         inner_top = y0 + 28
+        inner_h = (y1 - 4) - inner_top
         w = x1 - x0
-        local_max = max(max(self.hot_count), 1.0)
-        for px in range(w):
-            b = min(self.bucket_count - 1, (px * self.bucket_count) // max(1, w))
-            t = max(0.0, min(1.0, self.hot_count[b] / local_max))
-            v = int(25 + 230 * t)
-            draw.line((x0 + px, inner_top, x0 + px, y1 - 4), fill=(v, v, v))
+
+        bucket_px = max(1, w // self.bucket_count)
+
+        for b in range(self.bucket_count):
+            bx0 = x0 + b * bucket_px
+            bx1 = min(x1, bx0 + bucket_px - 1)
+
+            if self.value_count[b] <= 0:
+                continue
+
+            avg = self.value_sum[b] / max(1, self.value_count[b])
+            t = max(0.0, min(1.0, (avg - self.vmin) / (self.vmax - self.vmin)))
+
+            bar_h = max(1, int(inner_h * t))
+
+            color = (
+                int(40 + 40 * t),
+                int(120 + 120 * t),
+                int(40 + 40 * t),
+            )
+
+            draw.rectangle(
+                (
+                    bx0,
+                    y1 - 4 - bar_h,
+                    bx1,
+                    y1 - 4,
+                ),
+                fill=color,
+            )
 
 
 class Renderer:
@@ -340,8 +344,6 @@ class Renderer:
 
                     if self.steps % self.args.operations_to_frame == 0:
                         self.write_frame(frames_dir, main_view, aux_view, n, ev.kind)
-                        main_view.clear_activity()
-                        aux_view.clear_activity()
 
                         if self.args.frames > 0 and self.frame_no >= self.args.frames:
                             self.progress.log("frame limit reached: {:,}".format(self.args.frames), force=True)
@@ -447,11 +449,20 @@ class Renderer:
         title = self.args.title or os.path.basename(self.args.log)
 
         draw.text((margin, 18), title, fill=(245, 245, 245), font=self.font)
+
         stats = (
             "n={n:,}  operations_to_frame={otf:,}  op={op:,}  compare={cmp:,}  swap={swp:,}  copy={cpy:,}  phase={phase}"
-            .format(n=n, otf=self.args.operations_to_frame, op=self.steps, cmp=self.compares,
-                    swp=self.swaps, cpy=self.copies, phase=phase)
+            .format(
+                n=n,
+                otf=self.args.operations_to_frame,
+                op=self.steps,
+                cmp=self.compares,
+                swp=self.swaps,
+                cpy=self.copies,
+                phase=phase,
+            )
         )
+
         draw.text((margin, 42), stats, fill=(220, 220, 220), font=self.font)
 
         y = top_h
@@ -466,6 +477,7 @@ class Renderer:
     def encode(self, frames_dir: str) -> None:
         ffmpeg = shutil.which("ffmpeg")
         self.progress.log("encoding video with ffmpeg", force=True)
+
         cmd = [
             ffmpeg,
             "-y",
@@ -475,16 +487,22 @@ class Renderer:
             os.path.join(frames_dir, "frame_%08d.png"),
             "-c:v",
             "libx264",
+            "-preset",
+            "slow",
+            "-crf",
+            "18",
             "-pix_fmt",
             "yuv420p",
             "-movflags",
             "+faststart",
             self.args.out,
         ]
+
         if self.args.quiet_ffmpeg:
             subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         else:
             subprocess.run(cmd, check=True)
+
         self.progress.log("video written: {}".format(self.args.out), force=True)
 
 
@@ -511,6 +529,7 @@ def main() -> int:
     if args.sample_ops is not None:
         args.operations_to_frame = args.sample_ops
         print("Warning: --sample-ops is deprecated. Use --operations-to-frame.", file=sys.stderr)
+
     if args.frame_every_ops is not None:
         args.operations_to_frame = args.frame_every_ops
         print("Warning: --frame-every-ops is an alias. Prefer --operations-to-frame.", file=sys.stderr)
@@ -525,3 +544,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+

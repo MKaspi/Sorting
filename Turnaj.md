@@ -45,7 +45,7 @@ Všichni soutěžící mají k dispozici stejné rozhraní:
 
 **Cíl:**
 
-* navrhnout co nejefektivnější in-place třídění
+* realizovat co nejefektivnější in-place třídění
 
 ### 2) Comparator (Parallel + Auxiliary Memory)
 
