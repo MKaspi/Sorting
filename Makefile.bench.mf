@@ -2,8 +2,9 @@
 # Include from the main Makefile after BUILD, BIN, PLUGIN_DIR, PLUGIN_SRC are defined.
 #
 
+DATASET_SIZE ?= 1000000
 BENCH_ELEMS ?= 50 200 1000
-BENCH_INPUT ?= input/d2.int
+BENCH_INPUT ?= input/dataset.int
 BENCH_DIR ?= $(BUILD)/bench
 RENDERER ?= ./scripts/render_sort_video.py
 OPERATIONS_TO_FRAME ?= 1000
@@ -52,6 +53,12 @@ bench-list:
 	@printf 'overall:\n'
 	@printf '  %s\n' $(BENCH_OVERALL)
 	@printf 'summary: %s\n' "$(BENCH_SUMMARY)"
+
+bench-dataset: $(BENCH_INPUT)
+
+$(BENCH_INPUT): $(BIN)
+	mkdir -p $(@D)
+	./$(BIN) --dataset $@ --elem-count $(DATASET_SIZE) --enlarge-dataset --dataset-fill
 
 bench-clean:
 	rm -rf $(BENCH_DIR)
